@@ -40,7 +40,7 @@ Then use `Go` with `MakeRunner` and set the dependencies by assigning name (`run
 Refer to the example package in this repo
 
 ## Verify
-Dependencies can be verified by using `Options.Veirfy` and `runner.Verify` (dependencies existance and cycle check)
+Dependencies can be verified by using `Options.Veirfy` and `runner.Verify` (dependency existence, duplication and cycle check)
 
 `Options.Verify` will return an error if the dependency is broken
 
