@@ -62,7 +62,7 @@ func (r runner) Verify(opts *Options) runner {
 }
 
 // Marks the runner as non-fast-fail, runners that depend on it will continue to run even if it fails
-// error will be collected and wrapped if downstream runners fail
+// errors will be collected and wrapped if downstream runners fail
 func (r runner) Tolerant(opts *Options) runner {
 	if opts.dep == nil {
 		panic("dep not enabled")
