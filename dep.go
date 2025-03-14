@@ -63,35 +63,19 @@ func (r runner) Verify(opts *Options) runner {
 
 // Marks the runner as non-fast-fail, runners that depend on it will continue to run even if it fails
 // error will be collected and wrapped if downstream runners fail
-// DO NOT USE "_TOL" prefix in your code
 func (r runner) Tolerant(opts *Options) runner {
 	if opts.dep == nil {
 		panic("dep not enabled")
 	}
+	// anonymous runner can't be fatal, ignore
 	if len(opts.dep[fptr(r)].deps) == 0 || opts.dep[fptr(r)].deps[0] == "" {
-		// anonymous runner can't be fatal, ignore
 		return r
 	}
-	// prefix mark flag
-	// DO NOT USE THIS PREFIX IN YOUR CODE
-	opts.dep[fptr(r)].deps[0] = "_TOL" + opts.dep[fptr(r)].deps[0]
+	if opts.tol == nil {
+		opts.tol = make(map[string]token, 1)
+	}
+	opts.tol[opts.dep[fptr(r)].deps[0]] = token{}
 	return r
-}
-
-// check if the dependency is tolerant
-func tolerance(dep string) bool {
-	if len(dep) < 4 {
-		return false
-	}
-	return dep[:4] == "_TOL"
-}
-
-// trim tolerance prefix
-func trimTol(dep string) string {
-	if tolerance(dep) {
-		return dep[4:]
-	}
-	return dep
 }
 
 func notify(s signal) {
@@ -113,7 +97,7 @@ func (d depMap) verify(panicking bool) string {
 		if fd.deps[0] == "" {
 			continue
 		}
-		node := trimTol(fd.deps[0])
+		node := fd.deps[0]
 		if _, ok := src[node]; ok {
 			return fmt.Sprintf("duplicate dependency source %q", node)
 		}
@@ -138,7 +122,7 @@ func (d depMap) verify(panicking bool) string {
 		}
 	}
 
-	// check cycles dfs
+	// check cycle dfs
 	stk, visited := make(map[string]token), make(map[string]token)
 	var dfs func(node string) string
 	dfs = func(node string) string {
@@ -157,7 +141,7 @@ func (d depMap) verify(panicking bool) string {
 		delete(stk, node)
 		return ""
 	}
-	// check cycles
+	// check cycle
 	for node := range graph {
 		if _, ok := visited[node]; !ok {
 			if x := dfs(node); x != "" {

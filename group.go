@@ -75,19 +75,14 @@ func groupTryGo(ctx context.Context, g *errgroup.Group, opts *Options, fs ...fun
 }
 
 func (d depMap) groupGo(ctx context.Context, gtx context.Context, g *errgroup.Group, opts *Options) {
-	var sigs, tols = make(map[string]signal, len(d)), make(map[string]token)
+	var sigs = make(map[string]signal, len(d))
 	for _, fd := range d {
 		// skip anonymous func
 		if fd.deps[0] == "" {
 			continue
 		}
 		// self signal
-		dep := trimTol(fd.deps[0])
-		sigs[dep] = make(signal)
-		if tolerance(fd.deps[0]) {
-			// tolerance token
-			tols[dep], fd.deps[0] = token{}, dep
-		}
+		sigs[fd.deps[0]] = make(signal)
 	}
 
 	for r := range d {
@@ -119,11 +114,11 @@ func (d depMap) groupGo(ctx context.Context, gtx context.Context, g *errgroup.Gr
 					if errors.Is(gtx.Err(), context.DeadlineExceeded) {
 						return gtx.Err()
 					}
-					if _, ok := tols[dep]; !ok {
+					if _, ok := opts.tol[dep]; !ok {
 						return gtx.Err()
 					}
-					tols[d[r].deps[0]] = token{} // propagate tolerance
-					depErr = gtx.Err()           // record and continue
+					// propagate tolerance & record err
+					opts.tol[d[r].deps[0]], depErr = token{}, gtx.Err()
 				default: // ctx ok
 				}
 			}
@@ -153,19 +148,14 @@ func (d depMap) groupGo(ctx context.Context, gtx context.Context, g *errgroup.Gr
 }
 
 func (d depMap) groupTryGo(ctx context.Context, gtx context.Context, g *errgroup.Group, opts *Options) bool {
-	var sigs, tols = make(map[string]signal, len(d)), make(map[string]token)
+	var sigs = make(map[string]signal, len(d))
 	for _, fd := range d {
 		// skip anonymous func
 		if fd.deps[0] == "" {
 			continue
 		}
 		// self signal
-		dep := trimTol(fd.deps[0])
-		sigs[dep] = make(signal)
-		if tolerance(fd.deps[0]) {
-			// tolerance token
-			tols[dep], fd.deps[0] = token{}, dep
-		}
+		sigs[fd.deps[0]] = make(signal)
 	}
 
 	ok := true
@@ -198,11 +188,11 @@ func (d depMap) groupTryGo(ctx context.Context, gtx context.Context, g *errgroup
 					if errors.Is(gtx.Err(), context.DeadlineExceeded) {
 						return gtx.Err()
 					}
-					if _, ok := tols[dep]; !ok {
+					if _, ok := opts.tol[dep]; !ok {
 						return gtx.Err()
 					}
-					tols[d[r].deps[0]] = token{} // propagate tolerance
-					depErr = gtx.Err()           // record and continue
+					// propagate tolerance & record err
+					opts.tol[d[r].deps[0]], depErr = token{}, gtx.Err()
 				default: // ctx ok
 				}
 			}
