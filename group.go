@@ -114,6 +114,7 @@ func (d depMap) groupGo(ctx context.Context, gtx context.Context, g *errgroup.Gr
 					if errors.Is(gtx.Err(), context.DeadlineExceeded) {
 						return gtx.Err()
 					}
+					// tolerance check
 					if _, ok := opts.tol[dep]; !ok {
 						return gtx.Err()
 					}
@@ -188,6 +189,7 @@ func (d depMap) groupTryGo(ctx context.Context, gtx context.Context, g *errgroup
 					if errors.Is(gtx.Err(), context.DeadlineExceeded) {
 						return gtx.Err()
 					}
+					// tolerance check
 					if _, ok := opts.tol[dep]; !ok {
 						return gtx.Err()
 					}
