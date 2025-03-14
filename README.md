@@ -16,7 +16,7 @@
 
 `group.MakeRunner`
 
-`runner.Name, runner.Dep, runner.Verify`
+`runner.Name, runner.Dep, runner.Tolerant, runner.Verify`
 
 ---
 
