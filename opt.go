@@ -15,7 +15,7 @@ type Options struct {
 	ErrC    chan error    // error collector
 	WithLog bool
 
-	dep depMap            // dependency map
+	dep depMap           // dependency map
 	tol map[string]token // tolerance map
 }
 
