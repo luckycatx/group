@@ -10,7 +10,7 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
-func Go(ctx context.Context, opts *Options, fs ...func() error) error {
+func Go(ctx context.Context, opts *Options, fs ...func() error) (err error) {
 	if len(fs) == 0 {
 		return nil
 	}
@@ -30,7 +30,7 @@ func Go(ctx context.Context, opts *Options, fs ...func() error) error {
 		opts.Prefix = "anonymous"
 	}
 	if opts.WithLog {
-		defer groupTimer(ctx, "Go", opts.Prefix, time.Now())
+		defer groupTimer(ctx, fmt.Sprintf("Go%s", cond(opts.dep != nil, " | Dep", "")), opts.Prefix, time.Now(), err)
 	}
 
 	g, gtx := errgroup.WithContext(ctx)
@@ -54,7 +54,7 @@ func Go(ctx context.Context, opts *Options, fs ...func() error) error {
 	// outer timeout control
 	if opts.Timeout > 0 {
 		// only one error is collected by errgroup
-		var err, done = error(nil), make(signal)
+		done := make(signal)
 		go func() {
 			defer close(done)
 			err = g.Wait()
@@ -72,14 +72,14 @@ func Go(ctx context.Context, opts *Options, fs ...func() error) error {
 				}
 				return gtx.Err()
 			case <-done:
-				return err
+				return
 			}
 		}
 	}
 	return g.Wait()
 }
 
-func TryGo(ctx context.Context, opts *Options, fs ...func() error) (bool, error) {
+func TryGo(ctx context.Context, opts *Options, fs ...func() error) (ok bool, err error) {
 	if len(fs) == 0 {
 		return true, nil
 	}
@@ -99,7 +99,7 @@ func TryGo(ctx context.Context, opts *Options, fs ...func() error) (bool, error)
 		opts.Prefix = "anonymous"
 	}
 	if opts.WithLog {
-		defer groupTimer(ctx, "TryGo", opts.Prefix, time.Now())
+		defer groupTimer(ctx, fmt.Sprintf("TryGo%s", cond(opts.dep != nil, " | Dep", "")), opts.Prefix, time.Now(), err)
 	}
 
 	g, gtx := errgroup.WithContext(ctx)
@@ -110,7 +110,6 @@ func TryGo(ctx context.Context, opts *Options, fs ...func() error) (bool, error)
 		gtx, cancel = context.WithTimeout(gtx, opts.Timeout)
 		defer cancel()
 	}
-	var ok bool
 	if opts.dep == nil {
 		ok = groupTryGo(gtx, g, opts, fs...)
 	} else {
@@ -124,7 +123,7 @@ func TryGo(ctx context.Context, opts *Options, fs ...func() error) (bool, error)
 	// outer timeout control
 	if opts.Timeout > 0 {
 		// only one error is collected by errgroup
-		var err, done = error(nil), make(signal)
+		done := make(signal)
 		go func() {
 			defer close(done)
 			err = g.Wait()
@@ -142,7 +141,7 @@ func TryGo(ctx context.Context, opts *Options, fs ...func() error) (bool, error)
 				}
 				return ok, ctx.Err()
 			case <-done:
-				return ok, err
+				return
 			}
 		}
 	}

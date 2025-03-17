@@ -18,6 +18,7 @@ func groupGo(ctx context.Context, g *errgroup.Group, opts *Options, fs ...func()
 				return ctx.Err()
 			default:
 			}
+			
 			// no opts short circuit
 			if opts == nil || !opts.WithLog && opts.ErrC == nil {
 				return SafeRun(ctx, f)
