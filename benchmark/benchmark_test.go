@@ -53,6 +53,11 @@ func setupFuncs(tasks []Task) []func() error {
 
 //= BENCHMARK
 
+func init() {
+	// discard log output
+	slog.SetDefault(slog.New(slog.DiscardHandler))
+}
+
 var cases = []struct {
 	name          string
 	cnt, workload int
@@ -65,8 +70,6 @@ var cases = []struct {
 }
 
 func BenchmarkGo(b *testing.B) {
-	// discard log output
-	slog.SetDefault(slog.New(slog.DiscardHandler))
 	fmt.Println()
 	for _, c := range cases {
 		b.Run(fmt.Sprintf("%sWorkload", c.name), func(b *testing.B) {
