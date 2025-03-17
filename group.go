@@ -11,7 +11,7 @@ import (
 
 func groupGo(ctx context.Context, g *errgroup.Group, opts *Options, fs ...func() error) {
 	for _, f := range fs {
-		g.Go(func() error {
+		g.Go(func() (err error) {
 			// ctx check before exec
 			select {
 			case <-ctx.Done():
@@ -24,17 +24,12 @@ func groupGo(ctx context.Context, g *errgroup.Group, opts *Options, fs ...func()
 				return SafeRun(ctx, f)
 			}
 
-			var err error
-			if opts.WithLog {
-				defer funcMonitor(ctx, "groupGo", opts.Prefix, funcName(f), time.Now(), err)
+			if opts.WithLog || opts.ErrC != nil {
+				defer func(start time.Time) {
+					funcMonitor(ctx, "groupGo", opts.Prefix, funcName(f), start, opts.WithLog, opts.ErrC, err)
+				}(time.Now())
 			}
-
-			if err = SafeRun(ctx, f); err != nil {
-				if opts.ErrC != nil {
-					opts.ErrC <- fmt.Errorf("%s failed: %w", funcName(f), err)
-				}
-			}
-			return err
+			return SafeRun(ctx, f)
 		})
 	}
 }
@@ -42,7 +37,7 @@ func groupGo(ctx context.Context, g *errgroup.Group, opts *Options, fs ...func()
 func groupTryGo(ctx context.Context, g *errgroup.Group, opts *Options, fs ...func() error) bool {
 	ok := true
 	for _, f := range fs {
-		ok = ok && g.TryGo(func() error {
+		ok = ok && g.TryGo(func() (err error) {
 			// ctx check before exec
 			select {
 			case <-ctx.Done():
@@ -55,17 +50,12 @@ func groupTryGo(ctx context.Context, g *errgroup.Group, opts *Options, fs ...fun
 				return SafeRun(ctx, f)
 			}
 
-			var err error
-			if opts.WithLog {
-				defer funcMonitor(ctx, "groupTryGo", opts.Prefix, funcName(f), time.Now(), err)
+			if opts.WithLog || opts.ErrC != nil {
+				defer func(start time.Time) {
+					funcMonitor(ctx, "groupTryGo", opts.Prefix, funcName(f), start, opts.WithLog, opts.ErrC, err)
+				}(time.Now())
 			}
-
-			if err = SafeRun(ctx, f); err != nil {
-				if opts.ErrC != nil {
-					opts.ErrC <- fmt.Errorf("%s failed: %w", funcName(f), err)
-				}
-			}
-			return err
+			return SafeRun(ctx, f)
 		})
 	}
 	return ok
@@ -83,7 +73,7 @@ func (d depMap) groupGo(ctx context.Context, gtx context.Context, g *errgroup.Gr
 	}
 
 	for r := range d {
-		g.Go(func() error {
+		g.Go(func() (err error) {
 			// ctx check before exec
 			select {
 			case <-ctx.Done():
@@ -94,7 +84,7 @@ func (d depMap) groupGo(ctx context.Context, gtx context.Context, g *errgroup.Gr
 				defer notify(sigs[d[r].deps[0]])
 			}
 
-			var err error // record dep err
+			var depErr error // record dep err
 			for i, dep := range d[r].deps {
 				if i == 0 {
 					continue
@@ -117,31 +107,20 @@ func (d depMap) groupGo(ctx context.Context, gtx context.Context, g *errgroup.Gr
 						return gtx.Err()
 					}
 					// propagate tolerance & record err
-					opts.tol[d[r].deps[0]], err = token{}, gtx.Err()
+					opts.tol[d[r].deps[0]], depErr = token{}, gtx.Err()
 				default: // ctx ok
 				}
 			}
 
-			// no opts short circuit
-			if !opts.WithLog && opts.ErrC == nil {
-				if ferr := SafeRun(gtx, d[r].f); ferr != nil {
-					return errors.Join(ferr, err)
-				}
-				return err
+			if opts.WithLog || opts.ErrC != nil {
+				defer func(start time.Time) {
+					funcMonitor(ctx, "depMap.groupGo", opts.Prefix, cond(d[r].deps[0] != "", d[r].deps[0], funcName(d[r].f)), start, opts.WithLog, opts.ErrC, err)
+				}(time.Now())
 			}
-
-			var ferr error // actual err
-			if opts.WithLog {
-				defer funcMonitor(ctx, "Dep.groupGo", opts.Prefix, cond(d[r].deps[0] != "", d[r].deps[0], funcName(d[r].f)), time.Now(), ferr)
+			if err = SafeRun(gtx, d[r].f); err != nil {
+				return cond(depErr != nil, errors.Join(err, depErr), err)
 			}
-
-			if ferr = SafeRun(gtx, d[r].f); ferr != nil {
-				if opts.ErrC != nil {
-					opts.ErrC <- fmt.Errorf("%s failed: %w", cond(d[r].deps[0] != "", d[r].deps[0], funcName(d[r].f)), ferr)
-				}
-				return errors.Join(ferr, err)
-			}
-			return err
+			return depErr
 		})
 	}
 }
@@ -159,7 +138,7 @@ func (d depMap) groupTryGo(ctx context.Context, gtx context.Context, g *errgroup
 
 	ok := true
 	for r := range d {
-		ok = ok && g.TryGo(func() error {
+		ok = ok && g.TryGo(func() (err error) {
 			// ctx check before exec
 			select {
 			case <-ctx.Done():
@@ -170,7 +149,7 @@ func (d depMap) groupTryGo(ctx context.Context, gtx context.Context, g *errgroup
 				defer notify(sigs[d[r].deps[0]])
 			}
 
-			var err error // record dep err
+			var depErr error // record dep err
 			for i, dep := range d[r].deps {
 				if i == 0 {
 					continue
@@ -193,31 +172,20 @@ func (d depMap) groupTryGo(ctx context.Context, gtx context.Context, g *errgroup
 						return gtx.Err()
 					}
 					// propagate tolerance & record err
-					opts.tol[d[r].deps[0]], err = token{}, gtx.Err()
+					opts.tol[d[r].deps[0]], depErr = token{}, gtx.Err()
 				default: // ctx ok
 				}
 			}
 
-			// no opts short circuit
-			if !opts.WithLog && opts.ErrC == nil {
-				if ferr := SafeRun(gtx, d[r].f); ferr != nil {
-					return errors.Join(ferr, err)
-				}
-				return err
+			if opts.WithLog || opts.ErrC != nil {
+				defer func(start time.Time) {
+					funcMonitor(ctx, "depMap.groupTryGo", opts.Prefix, cond(d[r].deps[0] != "", d[r].deps[0], funcName(d[r].f)), start, opts.WithLog, opts.ErrC, err)
+				}(time.Now())
 			}
-
-			var ferr error
-			if opts.WithLog {
-				defer funcMonitor(ctx, "Dep.groupTryGo", opts.Prefix, cond(d[r].deps[0] != "", d[r].deps[0], funcName(d[r].f)), time.Now(), ferr)
+			if err = SafeRun(gtx, d[r].f); err != nil {
+				return cond(depErr != nil, errors.Join(err, depErr), err)
 			}
-
-			if ferr = SafeRun(gtx, d[r].f); ferr != nil {
-				if opts.ErrC != nil {
-					opts.ErrC <- fmt.Errorf("%s failed: %w", cond(d[r].deps[0] != "", d[r].deps[0], funcName(d[r].f)), ferr)
-				}
-				return errors.Join(ferr, err)
-			}
-			return err
+			return depErr
 		})
 	}
 	return ok
