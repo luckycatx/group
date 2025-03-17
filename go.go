@@ -63,7 +63,7 @@ func Go(ctx context.Context, opts *Options, fs ...func() error) (err error) {
 			case <-gtx.Done(): // actual timeout
 				if errors.Is(gtx.Err(), context.DeadlineExceeded) {
 					if opts.WithLog {
-						slog.InfoContext(ctx, fmt.Sprintf("[Group Go%s] group %s timeout", cond(opts.dep != nil, " | Dep", ""), opts.Prefix), slog.Duration("after", opts.Timeout))
+						slog.InfoContext(gtx, fmt.Sprintf("[Group Go%s] group %s timeout", cond(opts.dep != nil, " | Dep", ""), opts.Prefix), slog.Duration("after", opts.Timeout))
 					}
 					return errors.New("group timeout")
 				}
