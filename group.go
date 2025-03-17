@@ -18,7 +18,7 @@ func groupGo(ctx context.Context, g *errgroup.Group, opts *Options, fs ...func()
 				return ctx.Err()
 			default:
 			}
-			
+
 			// no opts short circuit
 			if opts == nil || !opts.WithLog && opts.ErrC == nil {
 				return SafeRun(ctx, f)
@@ -26,7 +26,7 @@ func groupGo(ctx context.Context, g *errgroup.Group, opts *Options, fs ...func()
 
 			var err error
 			if opts.WithLog {
-				defer funcTimer(ctx, "groupGo", opts.Prefix, funcName(f), time.Now(), err)
+				defer funcMonitor(ctx, "groupGo", opts.Prefix, funcName(f), time.Now(), err)
 			}
 
 			if err = SafeRun(ctx, f); err != nil {
@@ -57,7 +57,7 @@ func groupTryGo(ctx context.Context, g *errgroup.Group, opts *Options, fs ...fun
 
 			var err error
 			if opts.WithLog {
-				defer funcTimer(ctx, "groupTryGo", opts.Prefix, funcName(f), time.Now(), err)
+				defer funcMonitor(ctx, "groupTryGo", opts.Prefix, funcName(f), time.Now(), err)
 			}
 
 			if err = SafeRun(ctx, f); err != nil {
@@ -132,7 +132,7 @@ func (d depMap) groupGo(ctx context.Context, gtx context.Context, g *errgroup.Gr
 
 			var ferr error // actual err
 			if opts.WithLog {
-				defer funcTimer(ctx, "Dep.groupGo", opts.Prefix, cond(d[r].deps[0] != "", d[r].deps[0], funcName(d[r].f)), time.Now(), ferr)
+				defer funcMonitor(ctx, "Dep.groupGo", opts.Prefix, cond(d[r].deps[0] != "", d[r].deps[0], funcName(d[r].f)), time.Now(), ferr)
 			}
 
 			if ferr = SafeRun(gtx, d[r].f); ferr != nil {
@@ -208,7 +208,7 @@ func (d depMap) groupTryGo(ctx context.Context, gtx context.Context, g *errgroup
 
 			var ferr error
 			if opts.WithLog {
-				defer funcTimer(ctx, "Dep.groupTryGo", opts.Prefix, cond(d[r].deps[0] != "", d[r].deps[0], funcName(d[r].f)), time.Now(), ferr)
+				defer funcMonitor(ctx, "Dep.groupTryGo", opts.Prefix, cond(d[r].deps[0] != "", d[r].deps[0], funcName(d[r].f)), time.Now(), ferr)
 			}
 
 			if ferr = SafeRun(gtx, d[r].f); ferr != nil {

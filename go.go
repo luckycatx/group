@@ -30,7 +30,7 @@ func Go(ctx context.Context, opts *Options, fs ...func() error) (err error) {
 		opts.Prefix = "anonymous"
 	}
 	if opts.WithLog {
-		defer groupTimer(ctx, fmt.Sprintf("Go%s", cond(opts.dep != nil, " | Dep", "")), opts.Prefix, time.Now(), err)
+		defer groupMonitor(ctx, fmt.Sprintf("Go%s", cond(opts.dep != nil, " | Dep", "")), opts.Prefix, time.Now(), err)
 	}
 
 	g, gtx := errgroup.WithContext(ctx)
@@ -99,7 +99,7 @@ func TryGo(ctx context.Context, opts *Options, fs ...func() error) (ok bool, err
 		opts.Prefix = "anonymous"
 	}
 	if opts.WithLog {
-		defer groupTimer(ctx, fmt.Sprintf("TryGo%s", cond(opts.dep != nil, " | Dep", "")), opts.Prefix, time.Now(), err)
+		defer groupMonitor(ctx, fmt.Sprintf("TryGo%s", cond(opts.dep != nil, " | Dep", "")), opts.Prefix, time.Now(), err)
 	}
 
 	g, gtx := errgroup.WithContext(ctx)

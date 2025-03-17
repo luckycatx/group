@@ -33,14 +33,14 @@ func filter[T any](s []T, f func(T) bool) []T {
 	return r
 }
 
-func groupTimer(ctx context.Context, method, prefix string, start time.Time, err error) {
+func groupMonitor(ctx context.Context, method, prefix string, start time.Time, err error) {
 	slog.InfoContext(ctx, fmt.Sprintf("[Group %s] group %s done", method, prefix), slog.Duration("time_to_go", time.Since(start)))
 	if err != nil {
 		slog.ErrorContext(ctx, fmt.Sprintf("[Group %s] group %s failed", method, prefix), slog.String("err", fmt.Sprintf("%+v", err)))
 	}
 }
 
-func funcTimer(ctx context.Context, method, prefix, name string, start time.Time, err error) {
+func funcMonitor(ctx context.Context, method, prefix, name string, start time.Time, err error) {
 	slog.InfoContext(ctx, fmt.Sprintf("[Group %s] group %s: %s done", method, prefix, name), slog.Duration("time_to_go", time.Since(start)))
 	if err != nil {
 		slog.ErrorContext(ctx, fmt.Sprintf("[Group %s] group %s: %s failed", method, prefix, name), slog.String("err", fmt.Sprintf("%+v", err)))
