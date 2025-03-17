@@ -53,10 +53,7 @@ func Go(ctx context.Context, opts *Options, fs ...func() error) (err error) {
 
 	// outer timeout control
 	if opts.Timeout > 0 {
-		// only one error is collected by errgroup
-		done := make(signal)
 		go func() {
-			defer close(done)
 			err = g.Wait()
 		}()
 		for {
@@ -70,8 +67,6 @@ func Go(ctx context.Context, opts *Options, fs ...func() error) (err error) {
 					}
 					return errors.New("group timeout")
 				}
-				return gtx.Err()
-			case <-done:
 				return
 			}
 		}
@@ -122,10 +117,7 @@ func TryGo(ctx context.Context, opts *Options, fs ...func() error) (ok bool, err
 
 	// outer timeout control
 	if opts.Timeout > 0 {
-		// only one error is collected by errgroup
-		done := make(signal)
 		go func() {
-			defer close(done)
 			err = g.Wait()
 		}()
 		for {
@@ -133,14 +125,12 @@ func TryGo(ctx context.Context, opts *Options, fs ...func() error) (ok bool, err
 			case <-ctx.Done():
 				return ok, ctx.Err()
 			case <-gtx.Done(): // actual timeout
-				if errors.Is(ctx.Err(), context.DeadlineExceeded) {
+				if errors.Is(gtx.Err(), context.DeadlineExceeded) {
 					if opts.WithLog {
-						slog.InfoContext(ctx, fmt.Sprintf("[Group TryGo%s] group %s timeout", cond(opts.dep != nil, " | Dep", ""), opts.Prefix), slog.Duration("after", opts.Timeout))
+						slog.InfoContext(gtx, fmt.Sprintf("[Group TryGo%s] group %s timeout", cond(opts.dep != nil, " | Dep", ""), opts.Prefix), slog.Duration("after", opts.Timeout))
 					}
 					return ok, errors.New("group timeout")
 				}
-				return ok, ctx.Err()
-			case <-done:
 				return
 			}
 		}
