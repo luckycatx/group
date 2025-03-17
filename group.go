@@ -96,7 +96,7 @@ func (d depMap) groupGo(ctx context.Context, gtx context.Context, g *errgroup.Gr
 			default:
 				defer notify(sigs[d[r].deps[0]])
 			}
-			var depErr error // record dep err
+			var err error // record dep err
 			for i, dep := range d[r].deps {
 				if i == 0 {
 					continue
@@ -119,31 +119,31 @@ func (d depMap) groupGo(ctx context.Context, gtx context.Context, g *errgroup.Gr
 						return gtx.Err()
 					}
 					// propagate tolerance & record err
-					opts.tol[d[r].deps[0]], depErr = token{}, gtx.Err()
+					opts.tol[d[r].deps[0]], err = token{}, gtx.Err()
 				default: // ctx ok
 				}
 			}
 			// no opts short circuit
 			if !opts.WithLog && opts.ErrC == nil {
-				if err := SafeRun(gtx, d[r].f); err != nil {
-					return errors.Join(err, depErr)
+				if ferr := SafeRun(gtx, d[r].f); ferr != nil {
+					return errors.Join(ferr, err)
 				}
-				return depErr
+				return err
 			}
 			if opts.WithLog {
 				defer funcTimer(ctx, "Dep.groupGo", opts.Prefix, cond(d[r].deps[0] != "", d[r].deps[0], funcName(d[r].f)), time.Now())
 			}
-			if err := SafeRun(gtx, d[r].f); err != nil {
+			if ferr := SafeRun(gtx, d[r].f); ferr != nil {
 				fname := cond(d[r].deps[0] != "", d[r].deps[0], funcName(d[r].f))
 				if opts.ErrC != nil {
-					opts.ErrC <- fmt.Errorf("%s failed: %w", fname, err)
+					opts.ErrC <- fmt.Errorf("%s failed: %w", fname, ferr)
 				}
 				if opts.WithLog {
-					slog.ErrorContext(ctx, fmt.Sprintf("[Group Dep.groupGo] group %s: %s failed", opts.Prefix, fname), slog.String("err", fmt.Sprintf("%+v", err)))
+					slog.ErrorContext(ctx, fmt.Sprintf("[Group Dep.groupGo] group %s: %s failed", opts.Prefix, fname), slog.String("err", fmt.Sprintf("%+v", ferr)))
 				}
-				return errors.Join(err, depErr)
+				return errors.Join(ferr, err)
 			}
-			return depErr
+			return err
 		})
 	}
 }
@@ -171,7 +171,7 @@ func (d depMap) groupTryGo(ctx context.Context, gtx context.Context, g *errgroup
 			default:
 				defer notify(sigs[d[r].deps[0]])
 			}
-			var depErr error // record dep err
+			var err error // record dep err
 			for i, dep := range d[r].deps {
 				if i == 0 {
 					continue
@@ -194,31 +194,31 @@ func (d depMap) groupTryGo(ctx context.Context, gtx context.Context, g *errgroup
 						return gtx.Err()
 					}
 					// propagate tolerance & record err
-					opts.tol[d[r].deps[0]], depErr = token{}, gtx.Err()
+					opts.tol[d[r].deps[0]], err = token{}, gtx.Err()
 				default: // ctx ok
 				}
 			}
 			// no opts short circuit
 			if !opts.WithLog && opts.ErrC == nil {
-				if err := SafeRun(gtx, d[r].f); err != nil {
-					return errors.Join(err, depErr)
+				if ferr := SafeRun(gtx, d[r].f); ferr != nil {
+					return errors.Join(ferr, err)
 				}
-				return depErr
+				return err
 			}
 			if opts.WithLog {
 				defer funcTimer(ctx, "Dep.groupTryGo", opts.Prefix, cond(d[r].deps[0] != "", d[r].deps[0], funcName(d[r].f)), time.Now())
 			}
-			if err := SafeRun(gtx, d[r].f); err != nil {
+			if ferr := SafeRun(gtx, d[r].f); ferr != nil {
 				fname := cond(d[r].deps[0] != "", d[r].deps[0], funcName(d[r].f))
 				if opts.ErrC != nil {
-					opts.ErrC <- fmt.Errorf("%s failed: %w", fname, err)
+					opts.ErrC <- fmt.Errorf("%s failed: %w", fname, ferr)
 				}
 				if opts.WithLog {
-					slog.ErrorContext(ctx, fmt.Sprintf("[Group Dep.groupTryGo] group %s: %s failed", opts.Prefix, fname), slog.String("err", fmt.Sprintf("%+v", err)))
+					slog.ErrorContext(ctx, fmt.Sprintf("[Group Dep.groupTryGo] group %s: %s failed", opts.Prefix, fname), slog.String("err", fmt.Sprintf("%+v", ferr)))
 				}
-				return errors.Join(err, depErr)
+				return errors.Join(ferr, err)
 			}
-			return depErr
+			return err
 		})
 	}
 	return ok
