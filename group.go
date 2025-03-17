@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log/slog"
 	"time"
 
 	"golang.org/x/sync/errgroup"
@@ -23,20 +22,18 @@ func groupGo(ctx context.Context, g *errgroup.Group, opts *Options, fs ...func()
 			if opts == nil || !opts.WithLog && opts.ErrC == nil {
 				return SafeRun(ctx, f)
 			}
+
+			var err error
 			if opts.WithLog {
-				defer funcTimer(ctx, "groupGo", opts.Prefix, funcName(f), time.Now())
+				defer funcTimer(ctx, "groupGo", opts.Prefix, funcName(f), time.Now(), err)
 			}
-			if err := SafeRun(ctx, f); err != nil {
-				fname := funcName(f)
+
+			if err = SafeRun(ctx, f); err != nil {
 				if opts.ErrC != nil {
-					opts.ErrC <- fmt.Errorf("%s failed: %w", fname, err)
+					opts.ErrC <- fmt.Errorf("%s failed: %w", funcName(f), err)
 				}
-				if opts.WithLog {
-					slog.ErrorContext(ctx, fmt.Sprintf("[Group groupGo] group %s: %s failed", opts.Prefix, fname), slog.String("err", fmt.Sprintf("%+v", err)))
-				}
-				return err
 			}
-			return nil
+			return err
 		})
 	}
 }
@@ -51,24 +48,23 @@ func groupTryGo(ctx context.Context, g *errgroup.Group, opts *Options, fs ...fun
 				return ctx.Err()
 			default:
 			}
+
 			// no opts short circuit
 			if opts == nil || !opts.WithLog && opts.ErrC == nil {
 				return SafeRun(ctx, f)
 			}
+
+			var err error
 			if opts.WithLog {
-				defer funcTimer(ctx, "groupTryGo", opts.Prefix, funcName(f), time.Now())
+				defer funcTimer(ctx, "groupTryGo", opts.Prefix, funcName(f), time.Now(), err)
 			}
-			if err := SafeRun(ctx, f); err != nil {
-				fname := funcName(f)
+
+			if err = SafeRun(ctx, f); err != nil {
 				if opts.ErrC != nil {
-					opts.ErrC <- fmt.Errorf("%s failed: %w", fname, err)
+					opts.ErrC <- fmt.Errorf("%s failed: %w", funcName(f), err)
 				}
-				if opts.WithLog {
-					slog.ErrorContext(ctx, fmt.Sprintf("[Group groupTryGo] group %s: %s failed", opts.Prefix, fname), slog.String("err", fmt.Sprintf("%+v", err)))
-				}
-				return err
 			}
-			return nil
+			return err
 		})
 	}
 	return ok
@@ -96,6 +92,7 @@ func (d depMap) groupGo(ctx context.Context, gtx context.Context, g *errgroup.Gr
 			default:
 				defer notify(sigs[d[r].deps[0]])
 			}
+
 			var err error // record dep err
 			for i, dep := range d[r].deps {
 				if i == 0 {
@@ -123,6 +120,7 @@ func (d depMap) groupGo(ctx context.Context, gtx context.Context, g *errgroup.Gr
 				default: // ctx ok
 				}
 			}
+
 			// no opts short circuit
 			if !opts.WithLog && opts.ErrC == nil {
 				if ferr := SafeRun(gtx, d[r].f); ferr != nil {
@@ -130,16 +128,15 @@ func (d depMap) groupGo(ctx context.Context, gtx context.Context, g *errgroup.Gr
 				}
 				return err
 			}
+
+			var ferr error // actual err
 			if opts.WithLog {
-				defer funcTimer(ctx, "Dep.groupGo", opts.Prefix, cond(d[r].deps[0] != "", d[r].deps[0], funcName(d[r].f)), time.Now())
+				defer funcTimer(ctx, "Dep.groupGo", opts.Prefix, cond(d[r].deps[0] != "", d[r].deps[0], funcName(d[r].f)), time.Now(), ferr)
 			}
-			if ferr := SafeRun(gtx, d[r].f); ferr != nil {
-				fname := cond(d[r].deps[0] != "", d[r].deps[0], funcName(d[r].f))
+
+			if ferr = SafeRun(gtx, d[r].f); ferr != nil {
 				if opts.ErrC != nil {
-					opts.ErrC <- fmt.Errorf("%s failed: %w", fname, ferr)
-				}
-				if opts.WithLog {
-					slog.ErrorContext(ctx, fmt.Sprintf("[Group Dep.groupGo] group %s: %s failed", opts.Prefix, fname), slog.String("err", fmt.Sprintf("%+v", ferr)))
+					opts.ErrC <- fmt.Errorf("%s failed: %w", cond(d[r].deps[0] != "", d[r].deps[0], funcName(d[r].f)), ferr)
 				}
 				return errors.Join(ferr, err)
 			}
@@ -171,6 +168,7 @@ func (d depMap) groupTryGo(ctx context.Context, gtx context.Context, g *errgroup
 			default:
 				defer notify(sigs[d[r].deps[0]])
 			}
+
 			var err error // record dep err
 			for i, dep := range d[r].deps {
 				if i == 0 {
@@ -198,6 +196,7 @@ func (d depMap) groupTryGo(ctx context.Context, gtx context.Context, g *errgroup
 				default: // ctx ok
 				}
 			}
+
 			// no opts short circuit
 			if !opts.WithLog && opts.ErrC == nil {
 				if ferr := SafeRun(gtx, d[r].f); ferr != nil {
@@ -205,16 +204,15 @@ func (d depMap) groupTryGo(ctx context.Context, gtx context.Context, g *errgroup
 				}
 				return err
 			}
+
+			var ferr error
 			if opts.WithLog {
-				defer funcTimer(ctx, "Dep.groupTryGo", opts.Prefix, cond(d[r].deps[0] != "", d[r].deps[0], funcName(d[r].f)), time.Now())
+				defer funcTimer(ctx, "Dep.groupTryGo", opts.Prefix, cond(d[r].deps[0] != "", d[r].deps[0], funcName(d[r].f)), time.Now(), ferr)
 			}
-			if ferr := SafeRun(gtx, d[r].f); ferr != nil {
-				fname := cond(d[r].deps[0] != "", d[r].deps[0], funcName(d[r].f))
+
+			if ferr = SafeRun(gtx, d[r].f); ferr != nil {
 				if opts.ErrC != nil {
-					opts.ErrC <- fmt.Errorf("%s failed: %w", fname, ferr)
-				}
-				if opts.WithLog {
-					slog.ErrorContext(ctx, fmt.Sprintf("[Group Dep.groupTryGo] group %s: %s failed", opts.Prefix, fname), slog.String("err", fmt.Sprintf("%+v", ferr)))
+					opts.ErrC <- fmt.Errorf("%s failed: %w", cond(d[r].deps[0] != "", d[r].deps[0], funcName(d[r].f)), ferr)
 				}
 				return errors.Join(ferr, err)
 			}
