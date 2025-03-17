@@ -101,20 +101,21 @@ func TryGo(ctx context.Context, opts *Options, fs ...func() error) (bool, error)
 	if opts.WithLog {
 		defer groupTimer(ctx, "TryGo", opts.Prefix, time.Now())
 	}
-	// set timeout for fs
-	if opts.Timeout > 0 {
-		var cancel context.CancelFunc
-		ctx, cancel = context.WithTimeout(ctx, opts.Timeout)
-		defer cancel()
-	}
 
 	g, gtx := errgroup.WithContext(ctx)
 	g.SetLimit(cond(opts.Limit > 0, opts.Limit, len(fs))) // limit defaults to the number of funcs
+	// set timeout for group and fs
+	if opts.Timeout > 0 {
+		var cancel context.CancelFunc
+		gtx, cancel = context.WithTimeout(gtx, opts.Timeout)
+		defer cancel()
+	}
 	var ok bool
 	if opts.dep == nil {
 		ok = groupTryGo(gtx, g, opts, fs...)
 	} else {
 		// go runners with deps
+		// separate ctx for tolerance control
 		ok = opts.dep.groupTryGo(ctx, gtx, g, opts)
 		// go runners without deps
 		ok = ok && groupTryGo(gtx, g, opts, filter(fs, func(r func() error) bool { return opts.dep[fptr(r)] == nil })...)
