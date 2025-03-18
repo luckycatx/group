@@ -118,7 +118,7 @@ func (d depMap) groupGo(ctx context.Context, gtx context.Context, g *errgroup.Gr
 				}(time.Now())
 			}
 			if err = SafeRun(gtx, d[r].f); err != nil {
-				return cond(depErr != nil, errors.Join(err, depErr), err)
+				return cond(depErr != nil, fmt.Errorf("%v -> %w", depErr, err), err)
 			}
 			return depErr
 		})
@@ -183,7 +183,7 @@ func (d depMap) groupTryGo(ctx context.Context, gtx context.Context, g *errgroup
 				}(time.Now())
 			}
 			if err = SafeRun(gtx, d[r].f); err != nil {
-				return cond(depErr != nil, errors.Join(err, depErr), err)
+				return cond(depErr != nil, fmt.Errorf("%v -> %w", depErr, err), err)
 			}
 			return depErr
 		})
