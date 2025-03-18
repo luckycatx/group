@@ -56,11 +56,6 @@ func (r runner) Dep(opts *Options, names ...string) runner {
 	return r
 }
 
-func (r runner) Verify(opts *Options) runner {
-	opts.dep.verify(true)
-	return r
-}
-
 // Marks the runner as non-fast-fail, runners that depend on it will continue to run even if it fails
 // errors will be collected and wrapped if downstream runners fail
 func (r runner) Tolerant(opts *Options) runner {
@@ -75,6 +70,11 @@ func (r runner) Tolerant(opts *Options) runner {
 		opts.tol = make(map[string]token, 1)
 	}
 	opts.tol[opts.dep[fptr(r)].deps[0]] = token{}
+	return r
+}
+
+func (r runner) Verify(opts *Options) runner {
+	opts.dep.verify(true)
 	return r
 }
 
