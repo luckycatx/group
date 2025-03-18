@@ -97,7 +97,7 @@ func benchmarkGo(b *testing.B, tasks []Task) {
 
 	b.Run("GroupGoWithOpts", func(b *testing.B) {
 		fs := setupFuncs(tasks)
-		runGroupGo(b, group.Opts(group.WithTimeout(1*time.Minute), group.WithLog()), fs...)
+		runGroupGo(b, group.Opts(group.WithTimeout(1*time.Minute), group.WithLog), fs...)
 	})
 }
 

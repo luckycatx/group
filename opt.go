@@ -31,9 +31,14 @@ func WithPrefix(s string) option                { return func(o *Options) { o.Pr
 func WithLimit(x int) option                    { return func(o *Options) { o.Limit = x } }
 func WithTimeout(t time.Duration) option        { return func(o *Options) { o.Timeout = t } }
 func WithErrorCollector(errC chan error) option { return func(o *Options) { o.ErrC = errC } }
-func WithLog(logger ...slog.Logger) option      { return func(o *Options) { o.WithLog = true } }
+func WithLogger(logger *slog.Logger) option {
+	return func(o *Options) { o.WithLog = true; slog.SetDefault(logger) }
+}
 
-var WithDep option = func(o *Options) { o.dep = make(depMap) }
+var (
+	WithLog option = func(o *Options) { o.WithLog = true }
+	WithDep option = func(o *Options) { o.dep = make(depMap) }
+)
 
 func (o *Options) ValidateDep() error {
 	if o.dep == nil {
