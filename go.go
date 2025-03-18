@@ -55,10 +55,6 @@ func Go(ctx context.Context, opts *Options, fs ...func() error) (err error) {
 
 	// outer timeout control
 	if opts.Timeout > 0 {
-		var gerr error // avoid race
-		go func() {
-			gerr = g.Wait()
-		}()
 		for {
 			select {
 			case <-ctx.Done():
@@ -70,7 +66,7 @@ func Go(ctx context.Context, opts *Options, fs ...func() error) (err error) {
 					}
 					return errors.New("group timeout")
 				}
-				return gerr
+				return g.Wait()
 			}
 		}
 	}
@@ -122,10 +118,6 @@ func TryGo(ctx context.Context, opts *Options, fs ...func() error) (ok bool, err
 
 	// outer timeout control
 	if opts.Timeout > 0 {
-		var gerr error // avoid race
-		go func() {
-			gerr = g.Wait()
-		}()
 		for {
 			select {
 			case <-ctx.Done():
@@ -137,7 +129,7 @@ func TryGo(ctx context.Context, opts *Options, fs ...func() error) (ok bool, err
 					}
 					return ok, errors.New("group timeout")
 				}
-				return ok, gerr
+				return ok, g.Wait()
 			}
 		}
 	}
