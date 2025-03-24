@@ -9,7 +9,7 @@ import (
 type option func(*Options)
 
 type Options struct {
-	Prefix  string        // group name, used for log and metrics, default is "anonymous"
+	Prefix  string        // group name, used for log, default is "anonymous"
 	Limit   int           // concurrency limit
 	Timeout time.Duration // group timeout
 	ErrC    chan error    // error collector
