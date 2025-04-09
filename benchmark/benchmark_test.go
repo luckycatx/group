@@ -10,7 +10,7 @@ import (
 
 	"golang.org/x/sync/errgroup"
 
-	"github.com/luckycatx/group"
+	"github.com/oatcatx/group"
 )
 
 // Task represents a unit of work to benchmark
